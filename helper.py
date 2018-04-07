@@ -15,23 +15,29 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 class tf_basic_model:
     def preprocess_features(data_frame):
-        selected_features = data_frame[
-            [
-
-            ]
-        ]
-        preprocess_features = selected_features.copy()
-        preprocess_features = preprocess_features.apply(lambda x: x.fillna(x.value_counts().index[0]))
+        preprocess_features = data_frame.copy()
+        label_features_indexes = pd.Index(['PIDN', 'Ca', 'P', 'pH', 'SOC', 'Sand'])
+        preprocess_features_index = preprocess_features.columns.difference(label_features_indexes)
+        selected_features = preprocess_features[preprocess_features_index]
 
         return preprocess_features
 
     def preprocess_targets(data_frame):
+        output_cols = ['Ca', 'P', 'pH', 'SOC', 'Sand']
         output_targets = pd.DataFrame()
-        output_targets = data_frame[['Ca', 'P', 'pH', 'SOC', 'Sand']]
+        is_all_contains = True
+        for output_col in output_cols:
+            if not data_frame.columns.contains(output_col):
+                is_all_contains = False
+                break
+        if is_all_contains:
+            output_targets = data_frame[output_cols]
+        else:
+            output_targets = pd.DataFrame(0, index=np.arange(len(data_frame)), columns=output_cols)
         return output_targets
 
     def construct_feature_columns(input_features):
-        return set([tf.feature_column.numeric_column(my_feature) for my_feature in feature_columns])
+        return set([tf.feature_column.numeric_column(my_feature) for my_feature in input_features])
 
     def my_input_fn(features, targets, batch_size=1, shuffle=False, num_epochs=None):
         features = {key: np.array(value) for key, value in dict(features).items()}
@@ -54,7 +60,6 @@ class tf_basic_model:
             training_targets,
             validation_examples,
             validation_targets):
-
         periods = 10
         steps_per_period = steps / periods
 
@@ -64,19 +69,21 @@ class tf_basic_model:
             feature_columns=tf_basic_model.construct_feature_columns(training_examples),
             hidden_units=hidden_units,
             optimizer=my_optimizer,
+            label_dimension=5
         )
+        target_cols = ['Ca', 'P', 'pH', 'SOC', 'Sand']
 
         def training_input_fn(): return tf_basic_model.my_input_fn(training_examples,
-                                                                   training_targets["SalePrice"],
+                                                                   training_targets[target_cols],
                                                                    batch_size=batch_size)
 
         def predict_training_input_fn(): return tf_basic_model.my_input_fn(training_examples,
-                                                                           training_targets["SalePrice"],
+                                                                           training_targets[target_cols],
                                                                            num_epochs=1,
                                                                            shuffle=False)
 
         def predict_validation_input_fn(): return tf_basic_model.my_input_fn(validation_examples,
-                                                                             validation_targets["SalePrice"],
+                                                                             validation_targets[target_cols],
                                                                              num_epochs=1,
                                                                              shuffle=False)
 
@@ -87,7 +94,7 @@ class tf_basic_model:
         for period in range(0, periods):
             dnn_regressor.train(
                 input_fn=training_input_fn,
-                steps=steps_per_period
+                steps=steps_per_period,
             )
             # Take a break and compute predictions.
             training_predictions = dnn_regressor.predict(
