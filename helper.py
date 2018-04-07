@@ -21,8 +21,7 @@ class tf_basic_model:
             ]
         ]
         preprocess_features = selected_features.copy()
-        preprocess_features = preprocess_features.apply(
-            lambda x: x.fillna(x.value_counts().index[0]))
+        preprocess_features = preprocess_features.apply(lambda x: x.fillna(x.value_counts().index[0]))
 
         return preprocess_features
 
@@ -35,8 +34,7 @@ class tf_basic_model:
         return set([tf.feature_column.numeric_column(my_feature) for my_feature in feature_columns])
 
     def my_input_fn(features, targets, batch_size=1, shuffle=False, num_epochs=None):
-        features = {key: np.array(value)
-                    for key, value in dict(features).items()}
+        features = {key: np.array(value) for key, value in dict(features).items()}
 
         ds = tf.data.Dataset.from_tensor_slices((features, targets))
         ds = ds.batch(batch_size).repeat(num_epochs)
@@ -60,13 +58,10 @@ class tf_basic_model:
         periods = 10
         steps_per_period = steps / periods
 
-        my_optimizer = tf.train.GradientDescentOptimizer(
-            learning_rate=learning_rate)
-        my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(
-            my_optimizer, 5.0)
+        my_optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+        my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
         dnn_regressor = tf.estimator.DNNRegressor(
-            feature_columns=tf_basic_model.construct_feature_columns(
-                training_examples),
+            feature_columns=tf_basic_model.construct_feature_columns(training_examples),
             hidden_units=hidden_units,
             optimizer=my_optimizer,
         )
