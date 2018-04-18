@@ -55,7 +55,7 @@ class tf_basic_model:
         return features, labels
 
     def train_nn_regression_model(
-            learning_rate,
+            my_optimizer,
             steps,
             batch_size,
             hidden_units,
@@ -63,10 +63,9 @@ class tf_basic_model:
             training_targets,
             validation_examples,
             validation_targets):
-        periods = 20
+        periods = 100
         steps_per_period = steps / periods
 
-        my_optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
         dnn_regressor = tf.estimator.DNNRegressor(
             feature_columns=tf_basic_model.construct_feature_columns(training_examples),
@@ -133,12 +132,15 @@ class tf_basic_model:
         print("Final RMSE (on validation data): %0.2f" %
               validation_root_mean_squared_error)
 
-        return dnn_regressor
+        return dnn_regressor, training_rmse, validation_rmse
 
     def get_input_fn(data_set, num_epochs=None, shuffle=True):
         return tf.estimator.inputs.pandas_input_fn(x=pd.DataFrame({k: data_set[k].values for k in data_set.columns}), y=None, num_epochs=num_epochs, shuffle=shuffle)
 
-    def submit_prediction(model, testing_examples, testing_targets):
+    def submit_prediction(model, testing_examples, testing_targets, filename):
+        if filename is None:
+            filename = 'submission'
+
         target_cols = ['Ca', 'P', 'pH', 'SOC', 'Sand']
 
         def predict_testing_input_fn(): return tf_basic_model.my_input_fn(testing_examples, testing_targets[target_cols], num_epochs=1, shuffle=False)

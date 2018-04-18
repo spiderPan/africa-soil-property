@@ -3,6 +3,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from IPython import display
 
 from helper import tf_basic_model
@@ -29,13 +30,41 @@ validation_targets = tf_basic_model.preprocess_targets(validation_dataframe)
 testing_examples = tf_basic_model.preprocess_features(testing_data_frame)
 testing_targets = tf_basic_model.preprocess_targets(testing_data_frame)
 
-dnn_regressor = tf_basic_model.train_nn_regression_model(learning_rate=0.001,
-                                                         steps=10000,
-                                                         batch_size=50,
-                                                         hidden_units=[2048, 512, 32],
-                                                         training_examples=training_examples,
-                                                         training_targets=training_targets,
-                                                         validation_examples=validation_examples,
-                                                         validation_targets=validation_targets)
+gradient_regressor, gradient_training_looses, gradient_validation_losses = tf_basic_model.train_nn_regression_model(
+    my_optimizer=tf.train.GradientDescentOptimizer(learning_rate=0.07),
+    steps=10000,
+    batch_size=50,
+    hidden_units=[2048, 512, 32],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
 
-prediction = tf_basic_model.submit_prediction(dnn_regressor, testing_examples, testing_targets)
+tf_basic_model.submit_prediction(model=gradient_regressor,
+                                 testing_examples=testing_examples,
+                                 testing_targets=testing_targets)
+
+adam_regressor, adam_training_losses, adam_validation_losses = tf_basic_model.train_nn_regression_model(
+    my_optimizer=tf.train.AdamOptimizer(learning_rate=0.009),
+    steps=10000,
+    batch_size=50,
+    hidden_units=[2048, 512, 32],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+tf_basic_model.submit_prediction(model=adam_regressor,
+                                 testing_examples=testing_examples,
+                                 testing_targets=testing_targets,
+                                 filename='adam_submission')
+
+plt.ylabel("RMSE")
+plt.xlabel("Periods")
+plt.title("Root Mean Squared Error vs. Periods")
+plt.plot(gradient_training_looses, label='Gradient training')
+plt.plot(gradient_validation_losses, label='Gradient validation')
+plt.plot(adam_training_losses, label='Adam training')
+plt.plot(adam_validation_losses, label='Adam validation')
+_ = plt.legend()
+plt.show()
