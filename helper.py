@@ -16,11 +16,11 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 class tf_basic_model:
     def preprocess_features(data_frame):
         preprocess_features = data_frame.copy()
-        label_features_indexes = pd.Index(['PIDN', 'Ca', 'P', 'pH', 'SOC', 'Sand'])
+        label_features_indexes = pd.Index(['Ca', 'P', 'pH', 'SOC', 'Sand'])
         preprocess_features_index = preprocess_features.columns.difference(label_features_indexes)
         selected_features = preprocess_features[preprocess_features_index]
 
-        obj_cols = selected_features.select_dtypes(include=['object']).columns
+        obj_cols = selected_features.select_dtypes(include=['object']).columns.drop('PIDN')
         selected_features[obj_cols] = selected_features[obj_cols].apply(lambda x: x.astype('category').cat.codes)
 
         return selected_features
@@ -40,7 +40,7 @@ class tf_basic_model:
         return output_targets
 
     def construct_feature_columns(input_features):
-        return set([tf.feature_column.numeric_column(my_feature) for my_feature in input_features])
+        return set([tf.feature_column.numeric_column(my_feature) for my_feature in input_features.drop(['PIDN'], axis=1)])
 
     def my_input_fn(features, targets, batch_size=1, shuffle=False, num_epochs=None):
         features = {key: np.array(value) for key, value in dict(features).items()}
@@ -63,7 +63,7 @@ class tf_basic_model:
             training_targets,
             validation_examples,
             validation_targets):
-        periods = 1
+        periods = 20
         steps_per_period = steps / periods
 
         my_optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
@@ -100,20 +100,11 @@ class tf_basic_model:
                 steps=steps_per_period,
             )
             # Take a break and compute predictions.
-            training_predictions = dnn_regressor.predict(
-                input_fn=predict_training_input_fn,
-                as_iterable=False)
+            training_predictions = dnn_regressor.predict(input_fn=predict_training_input_fn)
+            training_predictions = np.array([item['predictions'] for item in training_predictions])
 
-            display.display(training_predictions)
-            sys.exit(0)
-            training_predictions = np.array(
-                [item['predictions'][0] for item in training_predictions])
-            print(training_predictions)
-            sys.exit(0)
-            validation_predictions = dnn_regressor.predict(
-                input_fn=predict_validation_input_fn)
-            validation_predictions = np.array(
-                [item['predictions'][0] for item in validation_predictions])
+            validation_predictions = dnn_regressor.predict(input_fn=predict_validation_input_fn)
+            validation_predictions = np.array([item['predictions'] for item in validation_predictions])
 
             # Compute training and validation loss.
             training_root_mean_squared_error = math.sqrt(
@@ -148,13 +139,13 @@ class tf_basic_model:
         return tf.estimator.inputs.pandas_input_fn(x=pd.DataFrame({k: data_set[k].values for k in data_set.columns}), y=None, num_epochs=num_epochs, shuffle=shuffle)
 
     def submit_prediction(model, testing_examples, testing_targets):
-        def predict_testing_input_fn(): return tf_basic_model.my_input_fn(
-            testing_examples, testing_targets['SalePrice'], num_epochs=1, shuffle=False)
-        submission = pd.DataFrame()
-        submission['Id'] = testing_examples['Id']
+        target_cols = ['Ca', 'P', 'pH', 'SOC', 'Sand']
+
+        def predict_testing_input_fn(): return tf_basic_model.my_input_fn(testing_examples, testing_targets[target_cols], num_epochs=1, shuffle=False)
         predictions = model.predict(input_fn=predict_testing_input_fn)
-        predictions = np.array([item['predictions'][0]
-                                for item in predictions])
-        submission['SalePrice'] = predictions
+        predictions = np.array([item['predictions'] for item in predictions])
+        submission = pd.DataFrame(predictions, columns=target_cols)
+        submission['PIDN'] = testing_examples['PIDN']
+        submission = submission.reindex(columns=['PIDN', 'Ca', 'P', 'pH', 'SOC', 'Sand'])
         submission.head()
         submission.to_csv('./data/submission.csv', index=False)
