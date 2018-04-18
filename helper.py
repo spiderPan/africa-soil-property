@@ -20,7 +20,10 @@ class tf_basic_model:
         preprocess_features_index = preprocess_features.columns.difference(label_features_indexes)
         selected_features = preprocess_features[preprocess_features_index]
 
-        return preprocess_features
+        obj_cols = selected_features.select_dtypes(include=['object']).columns
+        selected_features[obj_cols] = selected_features[obj_cols].apply(lambda x: x.astype('category').cat.codes)
+
+        return selected_features
 
     def preprocess_targets(data_frame):
         output_cols = ['Ca', 'P', 'pH', 'SOC', 'Sand']
@@ -60,7 +63,7 @@ class tf_basic_model:
             training_targets,
             validation_examples,
             validation_targets):
-        periods = 10
+        periods = 1
         steps_per_period = steps / periods
 
         my_optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
@@ -98,10 +101,15 @@ class tf_basic_model:
             )
             # Take a break and compute predictions.
             training_predictions = dnn_regressor.predict(
-                input_fn=predict_training_input_fn)
+                input_fn=predict_training_input_fn,
+                as_iterable=False)
+
+            display.display(training_predictions)
+            sys.exit(0)
             training_predictions = np.array(
                 [item['predictions'][0] for item in training_predictions])
-
+            print(training_predictions)
+            sys.exit(0)
             validation_predictions = dnn_regressor.predict(
                 input_fn=predict_validation_input_fn)
             validation_predictions = np.array(
