@@ -63,7 +63,7 @@ class tf_basic_model:
             training_targets,
             validation_examples,
             validation_targets):
-        periods = 100
+        periods = 20
         steps_per_period = steps / periods
 
         my_optimizer = tf.contrib.estimator.clip_gradients_by_norm(my_optimizer, 5.0)
@@ -137,7 +137,7 @@ class tf_basic_model:
     def get_input_fn(data_set, num_epochs=None, shuffle=True):
         return tf.estimator.inputs.pandas_input_fn(x=pd.DataFrame({k: data_set[k].values for k in data_set.columns}), y=None, num_epochs=num_epochs, shuffle=shuffle)
 
-    def submit_prediction(model, testing_examples, testing_targets, filename):
+    def submit_prediction(model, testing_examples, testing_targets, filename=None):
         if filename is None:
             filename = 'submission'
 

@@ -31,10 +31,24 @@ testing_examples = tf_basic_model.preprocess_features(testing_data_frame)
 testing_targets = tf_basic_model.preprocess_targets(testing_data_frame)
 
 gradient_regressor, gradient_training_looses, gradient_validation_losses = tf_basic_model.train_nn_regression_model(
-    my_optimizer=tf.train.GradientDescentOptimizer(learning_rate=0.07),
-    steps=10000,
-    batch_size=50,
-    hidden_units=[2048, 512, 32],
+    my_optimizer=tf.train.GradientDescentOptimizer(learning_rate=0.001),
+    steps=2000,
+    batch_size=100,
+    hidden_units=[10, 10],
+    training_examples=training_examples,
+    training_targets=training_targets,
+    validation_examples=validation_examples,
+    validation_targets=validation_targets)
+
+tf_basic_model.submit_prediction(model=gradient_regressor,
+                                 testing_examples=testing_examples,
+                                 testing_targets=testing_targets)
+
+adam_regressor, adam_training_looses, adam_validation_losses = tf_basic_model.train_nn_regression_model(
+    my_optimizer=tf.train.GradientDescentOptimizer(learning_rate=0.001),
+    steps=2000,
+    batch_size=100,
+    hidden_units=[10, 10],
     training_examples=training_examples,
     training_targets=training_targets,
     validation_examples=validation_examples,
@@ -45,10 +59,10 @@ tf_basic_model.submit_prediction(model=gradient_regressor,
                                  testing_targets=testing_targets)
 
 adam_regressor, adam_training_losses, adam_validation_losses = tf_basic_model.train_nn_regression_model(
-    my_optimizer=tf.train.AdamOptimizer(learning_rate=0.009),
-    steps=10000,
+    my_optimizer=tf.train.AdamOptimizer(learning_rate=0.0001),
+    steps=2000,
     batch_size=50,
-    hidden_units=[2048, 512, 32],
+    hidden_units=[10, 10],
     training_examples=training_examples,
     training_targets=training_targets,
     validation_examples=validation_examples,
